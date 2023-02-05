@@ -3,10 +3,10 @@
 all: client/client pech
 
 
-pech:
+pech: server.go
 	GOOS=linux go build
 
-client/client:
+client/client: client/client.go
 	cd client && GOOS=linux go build client.go
 
 run: all

@@ -5,22 +5,36 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
+	"time"
 )
 
 var connCount = 0
 
-func handleConn(conn net.Conn, ch chan int, connId int) {
-	if connId%100 == 0 {
+func handleConn(conn net.Conn, ch chan int, connId int, wg *sync.WaitGroup) {
+	wg.Add(1)
+	if connId%1000 == 0 {
 		fmt.Printf("Connection count: %d - remote is %s\n", connId, conn.RemoteAddr().String())
 		if connId > 65536 {
 			fmt.Printf("Quand est-ce que je visite le bunker???\n")
 		}
 	}
-	<-ch
-	fmt.Fprintf(conn, "%d", connId)
+	for {
+		select {
+		case <-ch:
+			// finished, we send a connId
+			fmt.Fprintf(conn, "%d\n", connId)
+			fmt.Printf("Finishing connection %d -- remote was %s\n", connId, conn.RemoteAddr().String())
+			wg.Done()
+		case <-time.After(5 * time.Second):
+			// send a ping regularly
+			fmt.Fprintln(conn, ".")
+		}
+	}
+
 }
 
-func vazy(ln net.Listener, ch chan int) {
+func vazy(ln net.Listener, ch chan int, wg *sync.WaitGroup) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -30,7 +44,7 @@ func vazy(ln net.Listener, ch chan int) {
 		}
 		connCount++
 		var connId = connCount
-		go handleConn(conn, ch, connId)
+		go handleConn(conn, ch, connId, wg)
 	}
 }
 
@@ -44,7 +58,8 @@ func main() {
 	fmt.Printf("Server listening on %s\n", ln.Addr().String())
 
 	ch := make(chan int)
-	go vazy(ln, ch)
+	var wg sync.WaitGroup
+	go vazy(ln, ch, &wg)
 
 	// on attend un pressage de bouton
 	reader := bufio.NewReader(os.Stdin)
@@ -54,9 +69,12 @@ func main() {
 		fmt.Println("Cant scan PROBLEM {}", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Sending end to all connections, %d\n", char)
+	fmt.Printf("Sending end to all %d connections, %d\n", connCount, char)
 	for i := 0; i < connCount; i++ {
 		ch <- i
 	}
+	fmt.Println("Waiting on all connections to complete...")
+	wg.Wait()
+	fmt.Println("Done, seeya")
 
 }

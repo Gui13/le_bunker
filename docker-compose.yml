@@ -3,21 +3,21 @@ version: '3'
 services:
   server:
     build: .
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
+    stdin_open: true
+    tty: true
     command: /pech
   client1:
     build: client/
     command: /client server:8080
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
+    stdin_open: true
+    tty: true
   client2:
     build: client/
     command: /client server:8080
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
+    stdin_open: true
+    tty: true
   client3:
     build: client/
     command: /client server:8080
-    stdin_open: true # docker run -i
-    tty: true        # docker run -t
+    stdin_open: true
+    tty: true
